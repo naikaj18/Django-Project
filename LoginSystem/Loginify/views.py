@@ -65,17 +65,21 @@ def update_user(request, email):
         try:
             user = UserDetails.objects.get(email=email)
             data = json.loads(request.body)
-            user.username = data.get("username", user.username)  # Update username if provided
-            
-            try:
-                user.save()
-                return JsonResponse({"message": "User updated successfully"})
-            except IntegrityError:
-                return JsonResponse({"error": "This email or username already exists in the system."}, status=400)
 
+            # Update fields if provided in the request
+            user.username = data.get("username", user.username)
+            new_email = data.get("email", user.email)
+
+            # Check for unique email constraint only if the email has changed
+            if new_email != user.email:
+                if UserDetails.objects.filter(email=new_email).exists():
+                    return JsonResponse({"error": "Email already exists"}, status=400)
+                user.email = new_email
+
+            user.save()
+            return JsonResponse({"message": "User updated successfully"})
         except UserDetails.DoesNotExist:
             return JsonResponse({"error": "User not found"}, status=404)
-    
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 @csrf_exempt
