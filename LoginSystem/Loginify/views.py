@@ -4,6 +4,7 @@ from django.contrib import messages
 from .models import UserDetails  # Import your UserDetails model
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.db import IntegrityError
 import json
 
 
@@ -64,11 +65,17 @@ def update_user(request, email):
         try:
             user = UserDetails.objects.get(email=email)
             data = json.loads(request.body)
-            user.username = data.get("username", user.username)  # Only update if new data is provided
-            user.save()
-            return JsonResponse({"message": "User updated successfully"})
+            user.username = data.get("username", user.username)  # Update username if provided
+            
+            try:
+                user.save()
+                return JsonResponse({"message": "User updated successfully"})
+            except IntegrityError:
+                return JsonResponse({"error": "This email or username already exists in the system."}, status=400)
+
         except UserDetails.DoesNotExist:
             return JsonResponse({"error": "User not found"}, status=404)
+    
     return JsonResponse({"error": "Invalid request method"}, status=400)
 
 @csrf_exempt
